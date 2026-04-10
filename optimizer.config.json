@@ -1,0 +1,8 @@
+{
+  "jpegQuality": 80,
+  "pngCompressionLevel": 8,
+  "pngQuality": 80,
+  "webp": false,
+  "skipLargerOutput": true,
+  "rename": true
+}

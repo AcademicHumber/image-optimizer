@@ -1,0 +1,31 @@
+{
+  "name": "image-optimizer",
+  "version": "1.0.0",
+  "description": "Recursively optimize JPG and PNG images for web",
+  "main": "dist/index.js",
+  "bin": {
+    "image-optimizer": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "cli-progress": "^3.12.0",
+    "commander": "^12.1.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
+    "@types/node": "^20.14.0",
+    "tsup": "^8.2.4",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}
