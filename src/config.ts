@@ -9,6 +9,8 @@ const DEFAULTS: OptimizerConfig = {
   webp: false,
   skipLargerOutput: true,
   rename: false,
+  maxWidth: 0,
+  maxHeight: 0,
 };
 
 export function loadConfig(overrides: Partial<OptimizerConfig> = {}): OptimizerConfig {
@@ -30,6 +32,8 @@ export function loadConfig(overrides: Partial<OptimizerConfig> = {}): OptimizerC
   merged.jpegQuality = clamp(merged.jpegQuality, 1, 100, 'jpegQuality');
   merged.pngQuality = clamp(merged.pngQuality, 1, 100, 'pngQuality');
   merged.pngCompressionLevel = clamp(merged.pngCompressionLevel, 0, 9, 'pngCompressionLevel');
+  merged.maxWidth = clamp(merged.maxWidth, 0, 100000, 'maxWidth');
+  merged.maxHeight = clamp(merged.maxHeight, 0, 100000, 'maxHeight');
 
   return merged;
 }

@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Node.js CLI tool that recursively compresses JPG/PNG images for web. Takes an input folder, writes optimized images to a sibling `<folder>-optimized` directory, preserving directory structure.
+Node.js CLI tool that recursively resizes and compresses JPG/PNG images for web. Takes an input folder, writes optimized images to a sibling `<folder>-optimized` directory, preserving directory structure.
 
 ## Build & run commands
 
@@ -24,7 +24,7 @@ Each module has a single responsibility — keep them that way:
 | `src/types.ts` | All shared interfaces. Every other module imports from here. |
 | `src/config.ts` | Loads `optimizer.config.json` from cwd, merges with defaults, validates ranges. |
 | `src/scanner.ts` | Recursive folder walk. Groups files by directory for rename numbering. Returns `ImageTask[]`. |
-| `src/optimizer.ts` | Calls sharp per file. Handles skip-larger-output logic and WebP output. Returns `ProcessResult`. |
+| `src/optimizer.ts` | Calls sharp per file. Handles resize, skip-larger-output logic, and WebP output. Returns `ProcessResult`. |
 | `src/reporter.ts` | All terminal I/O (header, progress bar, per-file lines, summary). No console calls anywhere else. |
 | `src/index.ts` | CLI entry point. Wires commander → config → scan → concurrency loop → report. |
 
@@ -38,6 +38,8 @@ Each module has a single responsibility — keep them that way:
 
 **PNG compression:** `palette: true` triggers pngquant-style quantization in `optimizer.ts:27`. Combined with `quality` and `effort: 10`.
 
+**Resize:** Applied before encoding via sharp's `.resize()` with `fit: 'inside'` and `withoutEnlargement: true` (`optimizer.ts`). Only runs when `maxWidth > 0` or `maxHeight > 0`. Both dimensions are optional — setting only one scales the other proportionally. Images smaller than the target are never upscaled.
+
 **Rename numbering:** Files within each directory are sorted alphabetically before assigning numbers (`scanner.ts:26`). This keeps numbering deterministic across runs.
 
 **Skip-larger-output:** After writing, byte sizes are compared. If output ≥ input, the original is copied to the output path instead (`optimizer.ts:47`). The `outputBytes` in the result is set to `inputBytes` so the summary math stays correct.
@@ -48,7 +50,7 @@ Each module has a single responsibility — keep them that way:
 
 1. Add the option to `OptimizerConfig` in `src/types.ts`.
 2. Add a default value in `src/config.ts` (`DEFAULTS`).
-3. Add the sharp pipeline in `src/optimizer.ts` (follow the WebP pattern at line 37).
+3. Add the sharp pipeline in `src/optimizer.ts` (follow the WebP pattern). Apply `resizeOptions` to the new pipeline the same way as JPEG/PNG/WebP.
 4. Add the CLI flag in `src/index.ts` and wire it into `configOverrides`.
 
 ## Adding a new CLI option
@@ -63,10 +65,13 @@ Each module has a single responsibility — keep them that way:
 - `mozjpeg: true` is built into sharp's libvips bundle — no separate mozjpeg install needed.
 - `palette: true` on PNG enables lossy quantization. Removing it makes PNG compression lossless-only and significantly less effective on photos.
 - WebP quality uses `config.jpegQuality` as a proxy — adjust if independent WebP quality control is needed.
+- Resize uses `fit: 'inside'` — this preserves aspect ratio and never crops. Do not change to `cover` or `fill` without understanding the cropping implications.
+- `withoutEnlargement: true` on resize is intentional — never remove it. Without it, images smaller than `maxWidth`/`maxHeight` would be upscaled, increasing file size.
 
 ## What not to do
 
 - Do not add `console.log` calls outside `src/reporter.ts`.
 - Do not throw inside `processImage` — it returns a `ProcessResult` with an `error` field so the concurrency loop can continue processing remaining files.
-- Do not change the output directory naming convention (`inputDir + '-optimized'`) without updating the README and tests.
+- Do not change the output directory naming convention (`inputDir + '-optimized'`) without updating the README and TECHNICAL docs.
+- Do not move the `.resize()` call to after the format encoder — sharp chains are ordered and resize must come first.
 - `chalk` is pinned to v4 for CommonJS compatibility. Do not upgrade to v5+ without converting the project to ESM.

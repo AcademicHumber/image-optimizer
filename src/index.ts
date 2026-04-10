@@ -29,6 +29,8 @@ program
     '--rename',
     'Rename output files as <folder-name>-1, <folder-name>-2, … (sorted alphabetically)'
   )
+  .option('--max-width <pixels>', 'Resize images to at most this width (0 = disabled)', '0')
+  .option('--max-height <pixels>', 'Resize images to at most this height (0 = disabled)', '0')
   .parse();
 
 async function main(): Promise<void> {
@@ -44,6 +46,8 @@ async function main(): Promise<void> {
   // commander --no-skip-larger sets opts.skipLarger = false
   if (opts.skipLarger === false) configOverrides.skipLargerOutput = false;
   if (opts.rename) configOverrides.rename = true;
+  if (opts.maxWidth !== '0') configOverrides.maxWidth = parseInt(opts.maxWidth, 10);
+  if (opts.maxHeight !== '0') configOverrides.maxHeight = parseInt(opts.maxHeight, 10);
 
   const config = loadConfig(configOverrides);
 

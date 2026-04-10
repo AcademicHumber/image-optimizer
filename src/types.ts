@@ -5,6 +5,8 @@ export interface OptimizerConfig {
   webp: boolean;
   skipLargerOutput: boolean;
   rename: boolean;
+  maxWidth: number;
+  maxHeight: number;
 }
 
 export interface ImageTask {

@@ -24,6 +24,11 @@ Configuration lives in `tsup.config.ts`:
 
 `sharp` is the core of the tool. It wraps `libvips`, a C library for image processing, through a native Node.js addon. Because the actual pixel work happens in compiled C code rather than JavaScript, it is significantly faster and more memory-efficient than pure-JS alternatives.
 
+Three operations are performed on each image, in order: **resize → encode → write**. The resize step is optional and controlled by config.
+
+**Resize** (via libvips)
+When `maxWidth` or `maxHeight` are set, sharp's `.resize()` is called with `fit: 'inside'` and `withoutEnlargement: true`. `fit: 'inside'` scales the image proportionally to fit within the given bounding box — a 6000×4000 image with `maxWidth: 1200` becomes 1200×800, not 1200×1200. `withoutEnlargement: true` means images already smaller than the target pass through unchanged. The resize is applied to the input pixels before any encoder runs, so both the JPEG/PNG output and any WebP sibling reflect the resized dimensions.
+
 Two encoders are used:
 
 **MozJPEG** (for `.jpg` / `.jpeg`)  
@@ -54,7 +59,7 @@ Here is the complete data flow from a user command to a finished output folder.
 
 When the user runs:
 ```
-node dist/index.js ./photos --jpeg-quality 75 --rename
+node dist/index.js ./photos --jpeg-quality 75 --max-width 1200 --rename
 ```
 
 Commander parses the arguments and options into a typed object. `index.ts` then:
@@ -82,7 +87,7 @@ The spread merge is a single expression:
 const merged = { ...DEFAULTS, ...fileConfig, ...overrides };
 ```
 
-After merging, numeric fields are clamped to valid ranges (`jpegQuality` to 1–100, `pngCompressionLevel` to 0–9). If a value is out of range a warning is printed and the value is clamped rather than erroring, so the tool degrades gracefully.
+After merging, numeric fields are clamped to valid ranges (`jpegQuality` to 1–100, `pngCompressionLevel` to 0–9, `maxWidth`/`maxHeight` to 0–100000). If a value is out of range a warning is printed and the value is clamped rather than erroring, so the tool degrades gracefully.
 
 ### Stage 3 — Scanning (`src/scanner.ts`)
 
@@ -164,11 +169,12 @@ The steps for each file:
 
 1. Read input file size from `fs.statSync` before processing.
 2. Create the output directory with `fs.mkdirSync(..., { recursive: true })`. This is idempotent and handles nested paths that do not exist yet.
-3. Run the sharp pipeline for the file's format (JPEG or PNG).
-4. If `config.webp` is true, run a second sharp pipeline to produce a `.webp` sibling.
-5. Read output file size after writing.
-6. If output ≥ input and `skipLargerOutput` is enabled, overwrite the output with a copy of the original. This ensures the output folder never contains a file larger than its source.
-7. Return a `ProcessResult` with both sizes, whether it was skipped, and any error.
+3. Build a sharp pipeline starting from the input file. If `maxWidth` or `maxHeight` are set, chain `.resize()` first before the format encoder.
+4. Chain the format-specific encoder (`.jpeg()` or `.png()`) and write to the output path.
+5. If `config.webp` is true, build a second sharp pipeline from the same input, apply the same resize options, and write a `.webp` sibling.
+6. Read output file size after writing.
+7. If output ≥ input and `skipLargerOutput` is enabled, overwrite the output with a copy of the original. This ensures the output folder never contains a file larger than its source.
+8. Return a `ProcessResult` with both sizes, whether it was skipped, and any error.
 
 On error: the partial output file is deleted with `fs.rmSync({ force: true })` before returning. `force: true` suppresses the error if the file was never created.
 

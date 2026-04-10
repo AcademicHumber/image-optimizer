@@ -1,6 +1,6 @@
 # image-optimizer
 
-A CLI tool that recursively scans a folder for JPG and PNG images and compresses them for web use. Output is written to a sibling folder, preserving the original directory structure.
+A CLI tool that recursively scans a folder for JPG and PNG images, resizes them to web-appropriate dimensions, and compresses them. Output is written to a sibling folder, preserving the original directory structure.
 
 ## Requirements
 
@@ -35,6 +35,8 @@ Point it at any folder and a sibling `<folder>-optimized` directory will be crea
 |---|---|---|
 | `-q, --jpeg-quality <n>` | `80` | JPEG quality, 1–100 |
 | `-p, --png-compression <n>` | `8` | PNG zlib compression level, 0–9 |
+| `--max-width <pixels>` | `0` | Resize images to at most this width. `0` disables. |
+| `--max-height <pixels>` | `0` | Resize images to at most this height. `0` disables. |
 | `--webp` | off | Also output a `.webp` version alongside each image |
 | `--no-skip-larger` | off | Write compressed output even if it is larger than the original |
 | `--rename` | off | Rename output files sequentially using their parent folder name |
@@ -56,8 +58,13 @@ node dist/index.js ./products --rename
 # /products/chair.jpg  →  /products-optimized/products-1.jpg
 # /products/table.png  →  /products-optimized/products-2.png
 
+# Resize to web dimensions (ecommerce products, etc.)
+node dist/index.js ./products --max-width 1200 --max-height 1200
+# 6000×6000 → 1200×1200,  6000×4000 → 1200×800  (aspect ratio preserved)
+# Images already smaller than the target are left at their original size
+
 # Combine options
-node dist/index.js ./images --jpeg-quality 75 --webp --rename
+node dist/index.js ./images --jpeg-quality 75 --max-width 1200 --webp --rename
 ```
 
 ### During development (no build step)
@@ -77,7 +84,9 @@ Create an `optimizer.config.json` in the directory where you run the command to 
   "pngQuality": 80,
   "webp": false,
   "skipLargerOutput": true,
-  "rename": false
+  "rename": false,
+  "maxWidth": 0,
+  "maxHeight": 0
 }
 ```
 
@@ -92,6 +101,7 @@ CLI flags take precedence over the config file.
 
 - All subfolders are scanned recursively.
 - Files are processed in parallel (one worker per CPU core).
+- When `maxWidth` or `maxHeight` are set, images are resized **before** compression. Aspect ratio is always preserved. Images already smaller than the target dimensions are never upscaled.
 - If the compressed output is larger than the original, the original is copied instead (disable with `--no-skip-larger`).
 - With `--rename`, files within each folder are sorted alphabetically before numbering, so the order is consistent across runs.
 

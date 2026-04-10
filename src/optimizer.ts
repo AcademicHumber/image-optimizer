@@ -14,9 +14,21 @@ export async function processImage(
 
   try {
     const isJpeg = task.ext === '.jpg' || task.ext === '.jpeg';
+    const shouldResize = config.maxWidth > 0 || config.maxHeight > 0;
+
+    const resizeOptions = shouldResize
+      ? {
+          width: config.maxWidth > 0 ? config.maxWidth : undefined,
+          height: config.maxHeight > 0 ? config.maxHeight : undefined,
+          fit: 'inside' as const,
+          withoutEnlargement: true,
+        }
+      : null;
 
     if (isJpeg) {
-      await sharp(task.inputPath)
+      let pipeline = sharp(task.inputPath);
+      if (resizeOptions) pipeline = pipeline.resize(resizeOptions);
+      await pipeline
         .jpeg({
           quality: config.jpegQuality,
           mozjpeg: true,
@@ -24,7 +36,9 @@ export async function processImage(
         })
         .toFile(task.outputPath);
     } else {
-      await sharp(task.inputPath)
+      let pipeline = sharp(task.inputPath);
+      if (resizeOptions) pipeline = pipeline.resize(resizeOptions);
+      await pipeline
         .png({
           compressionLevel: config.pngCompressionLevel,
           quality: config.pngQuality,
@@ -36,7 +50,9 @@ export async function processImage(
 
     if (config.webp) {
       const webpPath = task.outputPath.replace(/\.[^.]+$/, '.webp');
-      await sharp(task.inputPath)
+      let pipeline = sharp(task.inputPath);
+      if (resizeOptions) pipeline = pipeline.resize(resizeOptions);
+      await pipeline
         .webp({ quality: config.jpegQuality, effort: 6 })
         .toFile(webpPath);
     }
